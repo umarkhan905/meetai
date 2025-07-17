@@ -8,6 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { Loader2, OctagonAlertIcon } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
+import { FaGoogle, FaGithub } from "react-icons/fa";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -37,9 +38,12 @@ const formSchema = z
     path: ["confirmPassword"],
   });
 
+type Loading = "email" | "google" | "github";
+
 export function SignUpView() {
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<Loading | null>(null);
+  const [globalLoading, setGlobalLoading] = useState<boolean>(false);
 
   const router = useRouter();
 
@@ -55,7 +59,8 @@ export function SignUpView() {
 
   const onSubmit = async (data: z.infer<typeof formSchema>) => {
     setError(null);
-    setLoading(true);
+    setLoading("email");
+    setGlobalLoading(true);
 
     // Sign in with email
     await authClient.signUp.email(
@@ -63,17 +68,44 @@ export function SignUpView() {
         name: data.name,
         email: data.email,
         password: data.password,
+        callbackURL: "/",
       },
       {
         onSuccess: () => {
-          setLoading(false);
+          setLoading(null);
+          setGlobalLoading(false);
           toast.success("Account created successfully", {
             id: "sign-up-success",
           });
           router.push("/");
         },
         onError: ({ error }) => {
-          setLoading(false);
+          setLoading(null);
+          setGlobalLoading(false);
+          setError(error.message ?? "Something went wrong");
+        },
+      }
+    );
+  };
+
+  const handleSocialLogin = async (provider: "google" | "github") => {
+    setError(null);
+    setLoading(provider);
+    setGlobalLoading(true);
+    await authClient.signIn.social(
+      {
+        provider,
+        callbackURL: "/",
+      },
+      {
+        onSuccess: () => {
+          setLoading(null);
+          setGlobalLoading(false);
+          toast.success("Signed in successfully", { id: "sign-in-success" });
+        },
+        onError: ({ error }) => {
+          setLoading(null);
+          setGlobalLoading(false);
           setError(error.message ?? "Something went wrong");
         },
       }
@@ -107,7 +139,7 @@ export function SignUpView() {
                           <Input
                             type="name"
                             placeholder="John Doe"
-                            disabled={loading}
+                            disabled={globalLoading}
                             {...field}
                           />
                         </FormControl>
@@ -126,7 +158,7 @@ export function SignUpView() {
                           <Input
                             type="email"
                             placeholder="m@example.com"
-                            disabled={loading}
+                            disabled={globalLoading}
                             {...field}
                           />
                         </FormControl>
@@ -145,7 +177,7 @@ export function SignUpView() {
                           <Input
                             type="password"
                             placeholder="********"
-                            disabled={loading}
+                            disabled={globalLoading}
                             {...field}
                           />
                         </FormControl>
@@ -164,7 +196,7 @@ export function SignUpView() {
                           <Input
                             type="password"
                             placeholder="********"
-                            disabled={loading}
+                            disabled={globalLoading}
                             {...field}
                           />
                         </FormControl>
@@ -183,8 +215,12 @@ export function SignUpView() {
                 )}
 
                 {/* Sign in button */}
-                <Button className="w-full" type="submit" disabled={loading}>
-                  {loading ? (
+                <Button
+                  className="w-full"
+                  type="submit"
+                  disabled={globalLoading}
+                >
+                  {loading === "email" ? (
                     <Loader2 className="animate-spin size-5" />
                   ) : (
                     "Sign Up"
@@ -204,18 +240,28 @@ export function SignUpView() {
                     variant="outline"
                     className="w-full"
                     type="button"
-                    disabled={loading}
+                    disabled={globalLoading}
+                    onClick={() => handleSocialLogin("google")}
                   >
-                    Google
+                    {loading === "google" ? (
+                      <Loader2 className="animate-spin size-5" />
+                    ) : (
+                      <FaGoogle />
+                    )}
                   </Button>
 
                   <Button
                     variant="outline"
                     className="w-full"
                     type="button"
-                    disabled={loading}
+                    disabled={globalLoading}
+                    onClick={() => handleSocialLogin("github")}
                   >
-                    Github
+                    {loading === "github" ? (
+                      <Loader2 className="animate-spin size-5" />
+                    ) : (
+                      <FaGithub />
+                    )}
                   </Button>
                 </div>
 
